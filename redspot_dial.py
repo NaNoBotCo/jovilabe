@@ -481,7 +481,7 @@ function sky(jd){
     s=intoEq(st2.basis,st2.sats[i]);
     v=[0,1,2].map(k=>s[k]-b.pos[k]);
     const dist=Math.sqrt(dot(v,v)), aa=altaz(v,b);
-    const ang=Math.asin(K.moonR[i]/dist)/D;
+    const ang=Math.asin(DATA.moonR[i]/dist)/D;
     const toSun=norm([0,1,2].map(k=>sunEq[k]-s[k])), toMe=norm(v.map(c=>-c));
     const cosa=Math.max(-1,Math.min(1,dot(toSun,toMe)));
     let illum=0.5*(1+cosa);
@@ -588,24 +588,40 @@ function draw(){
   }
   document.getElementById("bodies").innerHTML=b;
 
-  /* The hub: what is up, and what it is doing. */
-  const rows=s.moons.map(m=>{
+  /* The hub: what is up, and what it is doing. Drawn as plain SVG text rather than
+     borrowed HTML, so the dial stays one self-contained drawing if it is ever
+     lifted out of the page. */
+  const T=(x,y,t,o)=>{o=o||{};
+    return "<text x='"+x+"' y='"+y+"' font-family='Georgia,serif' font-size='"+(o.size||13)+
+      "' fill='"+(o.fill||"#2a3140")+"' text-anchor='"+(o.anchor||"start")+"'"+
+      (o.style?" font-style='"+o.style+"'":"")+(o.ls?" letter-spacing='"+o.ls+"'":"")+
+      ">"+t+"</text>";};
+  const RULE=(y,w)=>"<line x1='"+(K.CX-w)+"' y1='"+y+"' x2='"+(K.CX+w)+"' y2='"+y+
+    "' stroke='#c9b98f' stroke-width='.8'/>";
+  let h=T(K.CX,352,"THE VIEW FROM THE",{size:11,fill:"#8d6f28",anchor:"middle",ls:1.7})+
+        T(K.CX,368,"GREAT RED SPOT",{size:11,fill:"#8d6f28",anchor:"middle",ls:1.7})+
+        RULE(384,120);
+  s.moons.forEach((m,j)=>{
+    const y=406+j*22;
     const st=m.eclipsed?"in shadow":(m.up?"up":"set");
-    return "<tr><td class='r'>"+m.roman+"</td><td>"+m.name+"</td>"+
-      "<td class='n'>"+(m.up?m.alt.toFixed(0)+"&deg;":"&mdash;")+"</td>"+
-      "<td class='n'>"+(m.up?m.az.toFixed(0)+"&deg;":"")+"</td>"+
-      "<td class='s "+(m.eclipsed?"ecl":(m.up?"up":"dn"))+"'>"+st+"</td></tr>";}).join("");
+    const col=m.eclipsed?"#8a4a35":(m.up?"#2f6b45":"#98a0ab");
+    h+=T(322,y,m.roman,{size:11,fill:"#8d6f28"})+
+       T(348,y,m.name,{fill:m.up?"#2a3140":"#98a0ab"})+
+       T(496,y,m.up?m.alt.toFixed(0)+"°":"—",{anchor:"end",
+         fill:m.up?"#2a3140":"#98a0ab"})+
+       T(546,y,m.up?m.az.toFixed(0)+"°":"",{anchor:"end",
+         fill:m.up?"#2a3140":"#98a0ab"})+
+       T(556,y,st,{size:11.5,style:"italic",fill:col});
+  });
+  h+=RULE(506,120)+
+     T(K.CX,526,(s.sun.up?"day":"night")+" · sun "+s.sun.alt.toFixed(0)+"°",
+       {size:12,fill:"#5d6470",anchor:"middle"})+
+     T(K.CX,544,"λ II  "+s.lonII.toFixed(1)+"°",
+       {size:12,fill:"#5d6470",anchor:"middle"});
   const solar=s.moons.filter(m=>m.solar);
-  const hub=
-    "<div class='hubwrap'><div class='hubtitle'>THE VIEW FROM THE<br>GREAT RED SPOT</div>"+
-    "<table class='hubtab'>"+rows+"</table>"+
-    "<div class='hubfoot'>"+(s.sun.up?"day":"night")+" &middot; sun "+s.sun.alt.toFixed(0)+"&deg;"+
-    "<br>&lambda;<sub>II</sub> "+s.lonII.toFixed(1)+"&deg;</div>"+
-    (solar.length?"<div class='eclipse'>"+solar[0].name+" is crossing the Sun</div>":"")+
-    "</div>";
-  document.getElementById("hub").innerHTML=
-    "<foreignObject x='"+(K.CX-165)+"' y='"+(K.CY-150)+"' width='330' height='300'>"+
-    "<div xmlns='http://www.w3.org/1999/xhtml'>"+hub+"</div></foreignObject>";
+  if(solar.length)h+=T(K.CX,564,solar[0].name+" is crossing the Sun",
+       {size:12,style:"italic",fill:"#8a4a35",anchor:"middle"});
+  document.getElementById("hub").innerHTML=h;
 
   const dt=new Date((jd-2440587.5-69.184/86400)*86400000);
   document.getElementById("stamp").textContent=dt.toISOString().replace("T"," ").slice(0,16)+" UTC";

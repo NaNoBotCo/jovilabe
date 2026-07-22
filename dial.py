@@ -462,7 +462,7 @@ def dial_svg() -> str:
   {_window_wheels()}
   <!-- 3. the plate, pierced -->
   {plate}
-  <g clip-path='url(#plateclip)'>{guilloche(R_PLATE - 6, 60.0)}</g>
+  <g clip-path='url(#plateclip)'>{guilloche(R_PLATE - 6, 200.0)}</g>
   {rims}
   <!-- 4. the zodiac, in ecliptic longitude -->
   {_zodiac_ring()}

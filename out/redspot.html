@@ -280,7 +280,7 @@ function sky(jd){
     s=intoEq(st2.basis,st2.sats[i]);
     v=[0,1,2].map(k=>s[k]-b.pos[k]);
     const dist=Math.sqrt(dot(v,v)), aa=altaz(v,b);
-    const ang=Math.asin(K.moonR[i]/dist)/D;
+    const ang=Math.asin(DATA.moonR[i]/dist)/D;
     const toSun=norm([0,1,2].map(k=>sunEq[k]-s[k])), toMe=norm(v.map(c=>-c));
     const cosa=Math.max(-1,Math.min(1,dot(toSun,toMe)));
     let illum=0.5*(1+cosa);
