@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+out/_port_check.js
+# Horizons responses are a cache of somebody else's data, not ours to vendor.
+data/horizons/

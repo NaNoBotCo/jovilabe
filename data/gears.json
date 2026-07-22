@@ -1,0 +1,168 @@
+[
+ {
+  "name": "Io",
+  "period_days": 1.769137782453014,
+  "train": [
+   [
+    12,
+    11
+   ],
+   [
+    17,
+    16
+   ],
+   [
+    29,
+    19
+   ]
+  ],
+  "step_up": false,
+  "ratio_true": 1.769137782453014,
+  "ratio_got": 1.7691387559808613,
+  "rel_error": 5.502837919711306e-07,
+  "seconds_per_turn": 0.08411280601947624,
+  "years_to_one_turn_out": 8802.067843728595,
+  "degrees_per_century": 4.089948025752803,
+  "stages": 3
+ },
+ {
+  "name": "Europa",
+  "period_days": 3.551181035914652,
+  "train": [
+   [
+    14,
+    11
+   ],
+   [
+    21,
+    11
+   ],
+   [
+    19,
+    13
+   ]
+  ],
+  "step_up": false,
+  "ratio_true": 3.551181035914652,
+  "ratio_got": 3.551176096630642,
+  "rel_error": 1.3908848802255127e-06,
+  "seconds_per_turn": 0.42675413844648347,
+  "years_to_one_turn_out": 6990.228977721819,
+  "degrees_per_century": 5.150045887585894,
+  "stages": 3
+ },
+ {
+  "name": "Callisto",
+  "period_days": 16.68901822473459,
+  "train": [
+   [
+    16,
+    13
+   ],
+   [
+    19,
+    13
+   ],
+   [
+    167,
+    18
+   ]
+  ],
+  "step_up": false,
+  "ratio_true": 16.68901822473459,
+  "ratio_got": 16.689020381328074,
+  "rel_error": 1.2922230990970174e-07,
+  "seconds_per_turn": 0.18632967711482706,
+  "years_to_one_turn_out": 353592.5159903144,
+  "degrees_per_century": 0.10181210962334426,
+  "stages": 3
+ },
+ {
+  "name": "Jupiter rotation (System II)",
+  "period_days": 0.41366472222222217,
+  "train": [
+   [
+    12,
+    7
+   ],
+   [
+    19,
+    16
+   ],
+   [
+    19,
+    16
+   ]
+  ],
+  "step_up": true,
+  "ratio_true": 2.41741668138381,
+  "ratio_got": 2.4174107142857144,
+  "rel_error": 2.468377976204983e-06,
+  "seconds_per_turn": 0.08822138888444704,
+  "years_to_one_turn_out": 458.82449781298885,
+  "degrees_per_century": 78.46137285954846,
+  "stages": 3
+ },
+ {
+  "name": "Jupiter round the zodiac",
+  "period_days": 4332.589,
+  "train": [
+   [
+    139,
+    6
+   ],
+   [
+    148,
+    10
+   ],
+   [
+    139,
+    11
+   ]
+  ],
+  "step_up": false,
+  "ratio_true": 4332.589,
+  "ratio_got": 4332.587878787879,
+  "rel_error": 2.587857100636805e-07,
+  "seconds_per_turn": 96.8727272353135,
+  "years_to_one_turn_out": 45837083.51226563,
+  "degrees_per_century": 0.0007853902831834118,
+  "stages": 3
+ },
+ {
+  "name": "Earth-Jupiter synodic",
+  "period_days": 398.88405,
+  "train": [
+   [
+    77,
+    8
+   ],
+   [
+    121,
+    20
+   ],
+   [
+    137,
+    20
+   ]
+  ],
+  "step_up": false,
+  "ratio_true": 398.88405,
+  "ratio_got": 398.8840625,
+  "rel_error": 3.13374275689488e-08,
+  "seconds_per_turn": 1.0800000021845333,
+  "years_to_one_turn_out": 34849223.27667542,
+  "degrees_per_century": 0.0010330215888655055,
+  "stages": 3
+ },
+ {
+  "name": "Ganymede",
+  "laplace": {
+   "residual_deg_per_day": -1.0000320571634802e-09,
+   "derived_n3": 50.31760920750001,
+   "true_n3": 50.317609207,
+   "rel_error": 9.937197662248622e-12,
+   "years_to_one_degree": 5475526.044430656
+  }
+ }
+]
