@@ -83,7 +83,7 @@ CLOUD_A = "#c9a583"     # the belts, engraved on the part of the plate that is J
 CLOUD_B = "#e2c9ae"
 SPOT = "#b4543a"
 NIGHT = "#0d1a30"
-DAY = "#b9cfe0"
+DAY = "#b0bfc7"     # a convention, not a measurement — see the note on the page
 MOONLIT = "#f5ead0"
 COPPER = "#8a4a35"      # a moon inside Jupiter's shadow
 
@@ -254,13 +254,25 @@ def _graduations() -> str:
 
 
 def _cardinals() -> str:
-    """Where the compass points fall, and the two names that matter: the meridian at
-    the top, and the horizon at either side."""
+    """The compass points, and which edge of the plate is which.
+
+    Worth spelling out, because the sense of the dial catches people: from twenty-two
+    degrees *south*, the moons cross the northern sky, so the top of the dial is
+    north and the motion runs from east on the right to west on the left — the
+    opposite way round from a northern observer's intuition.
+    """
     out = []
     for label, ang in (("N", 0.0), ("E", 90.0), ("S", 180.0), ("W", 270.0)):
         x, y = _p(R_AP_OUT + 22.0, ang)
         out.append(f"<text x='{_f(x)}' y='{_f(y + 4)}' text-anchor='middle' font-size='13' "
                    f"fill='{GOLD}' font-family='Georgia,serif' letter-spacing='1'>{label}</text>")
+    # Set just under the horizon rather than above it, where the moons are: the two
+    # edges of the plate need naming, and nothing is ever drawn on the plate.
+    for label, ang in (("rising", 99.0), ("setting", 261.0)):
+        x, y = _p(308.0, ang)
+        out.append(f"<text x='{_f(x)}' y='{_f(y)}' text-anchor='middle' font-size='11.5' "
+                   f"fill='#8a7448' font-family='Georgia,serif' font-style='italic' "
+                   f"letter-spacing='1.2' opacity='.85'>{label}</text>")
     return "".join(out)
 
 
@@ -271,11 +283,11 @@ def _tracks() -> str:
         fit = FITS[i]
         rr = R_A + R_K * fit["radius"]
         out.append(f"<circle cx='{CX}' cy='{CY}' r='{_f(rr)}' fill='none' "
-                   f"stroke='{GOLD}' stroke-width='.7' opacity='.35' "
+                   f"stroke='{GOLD_LIGHT}' stroke-width='.8' opacity='.5' "
                    f"stroke-dasharray='2 5'/>")
         x, y = _p(rr, 0)
-        out.append(f"<text x='{_f(x)}' y='{_f(y - 7)}' text-anchor='middle' font-size='9.5' "
-                   f"fill='{GOLD}' opacity='.8' font-family='Georgia,serif' "
+        out.append(f"<text x='{_f(x)}' y='{_f(y - 7)}' text-anchor='middle' font-size='10' "
+                   f"fill='{GOLD_LIGHT}' opacity='.9' font-family='Georgia,serif' "
                    f"letter-spacing='.5'>{jove.ROMAN[i]}</text>")
     return "".join(out)
 
@@ -535,7 +547,27 @@ function phasePath(cx,cy,R,illum,paDeg){
 
 function jdNow(){return offsetMs===null?Date.now()/86400000+2440587.5+69.184/86400
                                        :baseJd+offsetMs/86400000;}
-let offsetMs=null, baseJd=0, playing=null, rate=0;
+let offsetMs=null, baseJd=0, playing=null;
+
+/* When this moon next changes its mind about being up. Scanned in ten-minute steps
+   and then bisected — safe, because nothing here rises twice in half a Jovian day
+   and the quickest of them takes better than five hours to cross. Skipped during
+   playback, where it would cost more than the animation. */
+function nextCross(i,jd){
+  const step=1/144;
+  let was=sky(jd).moons[i].up;
+  const n=Math.ceil(K.synodic[i]*144*1.05);
+  for(let k=1;k<=n;k++){
+    const t=jd+k*step, now=sky(t).moons[i].up;
+    if(now!==was){
+      let lo=t-step, hi=t;
+      for(let b=0;b<10;b++){const mid=(lo+hi)/2;
+        if(sky(mid).moons[i].up===now)hi=mid;else lo=mid;}
+      return {rising:now,jd:(lo+hi)/2};
+    }
+  }
+  return null;
+}
 
 function fmtHM(h){const s=h<0?"-":"";h=Math.abs(h);
   const hh=Math.floor(h),mm=Math.round((h-hh)*60);
@@ -603,18 +635,25 @@ function draw(){
         RULE(384,120);
   s.moons.forEach((m,j)=>{
     const y=406+j*22;
-    const st=m.eclipsed?"in shadow":(m.up?"up":"set");
+    const dim=m.up?"#2a3140":"#98a0ab";
     const col=m.eclipsed?"#8a4a35":(m.up?"#2f6b45":"#98a0ab");
-    h+=T(322,y,m.roman,{size:11,fill:"#8d6f28"})+
-       T(348,y,m.name,{fill:m.up?"#2a3140":"#98a0ab"})+
-       T(496,y,m.up?m.alt.toFixed(0)+"°":"—",{anchor:"end",
-         fill:m.up?"#2a3140":"#98a0ab"})+
-       T(546,y,m.up?m.az.toFixed(0)+"°":"",{anchor:"end",
-         fill:m.up?"#2a3140":"#98a0ab"})+
-       T(556,y,st,{size:11.5,style:"italic",fill:col});
+    h+=T(312,y,m.roman,{size:11,fill:"#8d6f28"})+
+       T(334,y,m.name,{fill:dim})+
+       T(470,y,m.up?m.alt.toFixed(0)+"°":"—",{anchor:"end",fill:dim})+
+       T(514,y,m.up?m.az.toFixed(0)+"°":"",{anchor:"end",fill:dim})+
+       T(520,y,m.eclipsed?"eclipsed":(m.up?"up":"set"),
+         {size:11.5,style:"italic",fill:col});
+    const c=playing?null:nextCross(m.i,jd);
+    if(c)h+=T(624,y,(c.rising?"rises ":"sets ")+fmtHM((c.jd-jd)*24),
+              {size:11,anchor:"end",fill:"#7b838f"});
   });
+  /* Local time is just where the Sun stands: the same hour angle the outer scale
+     is graduated in. */
+  const solarHour=project(s.sun.geo,s.sun.az).ang/360*K.dayHours;
+  const light=s.sun.up?"day":(s.sun.alt>-12?"twilight":"night");
   h+=RULE(506,120)+
-     T(K.CX,526,(s.sun.up?"day":"night")+" · sun "+s.sun.alt.toFixed(0)+"°",
+     T(K.CX,526,light+" · sun "+s.sun.alt.toFixed(0)+"° · "+
+       fmtHM(Math.abs(solarHour))+(solarHour<0?" past noon":" to noon"),
        {size:12,fill:"#5d6470",anchor:"middle"})+
      T(K.CX,544,"λ II  "+s.lonII.toFixed(1)+"°",
        {size:12,fill:"#5d6470",anchor:"middle"});
@@ -728,12 +767,14 @@ own orbital motion, which is what sets how often a moon comes round again:</p>
 {tbl}</table>
 <p>The <em>arbor offset</em> is the part worth staring at. A disc turning about the
 dial's exact centre does not quite fit the sky; shifting its arbor a little does.
-The offsets that come out of the fit are not free parameters that happened to
-work — for every one of the four they land on the observer's distance from
-Jupiter's axis divided by the moon's, which is the parallax exactly. The dial is
-off-centre because the observer is. What is left over, the last few degrees, is
-second-order parallax, and no rigid circle can carry it: at worst it puts Io eleven
-minutes early or late in a thirteen-hour day, and Callisto three.</p>
+The offsets were fitted blind, four independent least squares, and they are not
+free parameters that happened to help — every one of them comes out at half the
+tangent of that moon's parallax, to within one per cent. (Half, because that is the
+scale the stereographic projection happens to have where these tracks lie.) Which
+is to say: the dial is off-centre because <em>the observer is</em>, and by exactly
+as much. What is left over, the last few degrees, is second-order parallax, and no
+rigid circle can carry it: at worst it puts Io eleven minutes early or late in a
+thirteen-hour day, and Callisto three.</p>
 
 <h2>How to read the rings</h2>
 <p>The order of the rings is not the order of the orbits. It is the order of
@@ -756,6 +797,12 @@ from the ground. They show phases, because of course they do. And when one enter
 Jupiter's shadow it goes coppery rather than black: Jupiter's air bends a little red
 sunlight into its own umbra, in the way ours does during a lunar eclipse. That last
 is an inference from the physics, not something anyone has photographed.</p>
+<p>The colour the window takes when the Sun is up is a drawing convention and
+nothing more. It is set from the Sun's altitude so that the dial reads at a glance,
+but nobody has stood on those cloud tops, and what little is known — a thin
+hydrogen-and-helium sky under an ammonia haze, lit twenty-seven times more faintly
+than noon on Earth — does not settle the question. Treat the tint as an index
+finger, not as a photograph.</p>
 
 <h2>What was checked, and against what</h2>
 <p>Three things could be wrong independently, so three were tested separately.</p>
@@ -769,9 +816,10 @@ Jupiter's rotation.</p>
 Jupiter, so it will state the altitude and azimuth of Io from a site at 22.4&deg;
 south. Against 289 of those places over four days, this page's whole chain — theory,
 frame, rotation, spheroid, local vertical — agrees to within about a minute and a
-half of arc, which is a few seconds of time. The residue is the satellite theory's
-own error, magnified: the tenth of an arcsecond that is invisible from Earth becomes
-visible when you stand a thousand times closer.</p>
+half of arc, which is a few seconds of time. The residue is not the chain: it is the
+satellite theory's own error, which is about two thousand kilometres in a moon's
+place, a twentieth of Jupiter's width, and invisible from Earth. Stand a thousand
+times closer and the same error is suddenly big enough to see.</p>
 <p><strong>Where the Red Spot is.</strong> This is the soft one, and it is soft
 because of Jupiter rather than because of arithmetic. The spot drifts — currently
 about sixteen degrees a year, westward, through the very longitude system that was
@@ -796,6 +844,30 @@ and a 25 km scale height, and good to about a factor of two. Together they let t
 moons rise about four minutes early. Both are named constants with their workings
 written out; neither is large enough to argue about, and both are included so that
 leaving them out is not a decision made silently.</p>
+
+<h2>What standing there would actually do to you</h2>
+
+<p>Everything above is computed. This part is not the instrument's claim, it is
+simply what is known, and it is worth writing down because the dial quietly asks you
+to imagine a thing that cannot happen.</p>
+
+<p>You would not burn. You would <em>freeze</em> — the cloud tops sit at about
+&minus;145&nbsp;&deg;C. You would not breathe, because the air is nine parts hydrogen
+to one part helium and no parts oxygen. You would weigh two and a half times what you
+weigh now. The wind at the Spot&rsquo;s rim runs at something like 430&nbsp;km/h,
+though the middle of it — where this dial stands — is comparatively calm, which is
+the sort of comfort that stops being comforting when you think about it.</p>
+
+<p>And there is nothing to stand <em>on</em>. Jupiter has no surface. You would sink,
+and it would get warmer and heavier the whole way down, until somewhere in the dark
+the pressure finished the argument. So: freeze, suffocate, crush — in that order,
+with the burning saved for last and far too late to matter.</p>
+
+<p class='note'>The <em>sky</em> in this dial is real. Point a telescope at Jupiter
+and the moons are where it says they are; the arithmetic is checked against JPL
+Horizons and the errors are printed above. The <em>observer</em> is a fiction. That
+is the only thing on this page that has not been measured, and it seemed better to
+say so plainly than to let a handsome dial imply otherwise.</p>
 
 <footer>Computed in the page from Lieske's E5 theory — the same tables the reference
 implementation uses, shipped as data rather than retyped, so the two cannot disagree

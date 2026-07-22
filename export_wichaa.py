@@ -29,7 +29,9 @@ import emit
 import page
 
 HERE = Path(__file__).resolve().parent
-TARGET = HERE.parent / "manuscript-wiki" / "jovilabe.py"
+WIKI = HERE.parent / "manuscript-wiki"
+TARGET = WIKI / "jovilabe.py"
+RS_TARGET = WIKI / "redspot.py"
 SCOPE = ".jov"
 
 
@@ -53,7 +55,7 @@ def split_rules(css: str):
     return out
 
 
-def scope_selector(sel: str) -> str:
+def scope_selector(sel: str, scope: str = SCOPE) -> str:
     parts = []
     for one in sel.split(","):
         one = one.strip()
@@ -61,26 +63,26 @@ def scope_selector(sel: str) -> str:
             continue
         if one in (":root", "body"):
             # Custom properties and the page background belong to the wrapper now.
-            parts.append(SCOPE)
+            parts.append(scope)
         elif one.startswith("@"):
             parts.append(one)
-        elif one.startswith(SCOPE):
+        elif one.startswith(scope):
             parts.append(one)
         else:
-            parts.append(f"{SCOPE} {one}")
+            parts.append(f"{scope} {one}")
     return ",".join(parts)
 
 
-def scope_css(css: str) -> str:
+def scope_css(css: str, scope: str = SCOPE) -> str:
     out = []
     for prelude, body in split_rules(css):
         if prelude.startswith("@media"):
-            inner = "".join(f"{scope_selector(p)}{{{b}}}" for p, b in split_rules(body))
+            inner = "".join(f"{scope_selector(p, scope)}{{{b}}}" for p, b in split_rules(body))
             out.append(f"{prelude}{{{inner}}}")
         elif prelude.startswith("@"):
             out.append(f"{prelude}{{{body}}}")
         else:
-            out.append(f"{scope_selector(prelude)}{{{body}}}")
+            out.append(f"{scope_selector(prelude, scope)}{{{body}}}")
     return "".join(out)
 
 
@@ -158,17 +160,137 @@ _CARD = {card!r}
 '''
 
 
+
+
+# ---------------------------------------------------------------------------
+# The Red Spot dial — the same treatment, a different page.
+# ---------------------------------------------------------------------------
+RS_SCOPE = ".rsp"
+
+RS_EXTRA = """
+/* Same bargain as the jovilabe's wrapper: carry the custom properties down, set
+   the serif, and otherwise let the site own the page. */
+.rsp{display:block;color:var(--ink);margin:0 0 8px;
+  font:16.5px/1.62 Georgia,'Iowan Old Style',serif}
+/* A full-width column reads badly. Give the dial room and the prose a measure. */
+.rsp .rspmain{max-width:980px;margin:0 auto;padding:0}
+.rsp p,.rsp h2,.rsp .note,.rsp table.spec,.rsp footer{max-width:72ch}
+.rsp p{max-width:70ch}
+"""
+
+
+def redspot_source(card: str) -> str:
+    """Split the standalone Red Spot document into a stylesheet and a body.
+
+    Its `page()` builds a whole HTML file, which is the right shape standing alone
+    and the wrong one inside a site. The <main> is renamed on the way through
+    because wichaa already has one and a page may only have a single main element.
+    """
+    import redspot_dial
+
+    doc = redspot_dial.page()
+    css = doc[doc.index("<style>") + 7:doc.index("</style>")]
+    body = doc[doc.index("<body>") + 6:doc.rindex("</body>")]
+
+    css = css.replace("main{", ".rspmain{", 1)
+    body = body.replace("<main>", "<div class='rspmain'>").replace("</main>", "</div>")
+
+    # The page's own title block is the document's when it stands alone; here the
+    # site header carries it, so strip it rather than hiding it — a second <h1>
+    # left in the DOM is still a second <h1> to anything reading the page aloud.
+    body = re.sub(r"<h1>.*?</h1>\s*", "", body, count=1, flags=re.S)
+    body = re.sub(r"<p class='sub'>.*?</p>\s*", "", body, count=1, flags=re.S)
+
+    # And scope it, or its body{} rule repaints the whole site.
+    css = scope_css(css, RS_SCOPE) + RS_EXTRA
+
+    return f'''"""The Red Spot dial — GENERATED. Do not edit; edit the jovilabe project instead.
+
+Written by ``jovilabe/export_wichaa.py`` from ``redspot_dial.py``. The sky over
+Jupiter's Great Red Spot: where the four Galilean moons are from *there*, whether
+they are up, and how long the wait is between one rising and the next.
+
+The companion piece to ``jovilabe.py`` — the same E5 tables, pointed the other way.
+"""
+
+DIAL_CSS = {css!r}
+
+_BODY = {body!r}
+
+
+def redspot_body(nav: str) -> str:
+    """The page: the site's header, then the dial and its essay."""
+    return (
+        "<header><div><h1>The Red Spot dial</h1>"
+        "<p class=sub>A moonphase complication rebuilt for somebody standing in the "
+        "storm &#8212; Jupiter&#8217;s four moons, from a Jovian horizon</p></div>"
+        + nav + "</header>"
+        "<main id=main><div class=rsp>" + _BODY + "</div></main>"
+    )
+
+
+def card_svg() -> str:
+    return _CARD
+
+
+_CARD = {card!r}
+'''
+
+
+def redspot_card_svg() -> str:
+    """The 1200x630 card, built from the still the page's own script drew.
+
+    ``redspot_still.py`` runs the page in headless Chrome and keeps the drawing, so
+    the card shows the instrument as the instrument actually renders it. If the
+    still is missing the export says so rather than inventing a picture.
+    """
+    still = HERE / "out" / "redspot_still.svg"
+    if not still.exists():
+        raise SystemExit("out/redspot_still.svg is missing — run: python3 redspot_still.py")
+    inner = still.read_text()
+    inner = inner[inner.index(">") + 1:inner.rindex("</svg>")]
+    return f"""<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='630'
+     viewBox='0 0 1200 630'>
+  <rect width='1200' height='630' fill='#eee8db'/>
+  <rect x='0' y='0' width='1200' height='14' fill='#8d6f28'/>
+  <g transform='translate(18 -18) scale(0.74)'>{inner}</g>
+  <g transform='translate(700 0)'>
+    <text x='0' y='176' style='font:700 64px Georgia,serif' fill='#1a2431'>The Red Spot</text>
+    <text x='0' y='240' style='font:700 64px Georgia,serif' fill='#1a2431'>dial</text>
+    <text x='0' y='300' style='font:italic 26px Georgia,serif' fill='#5d6470'>
+      a moonphase complication for</text>
+    <text x='0' y='336' style='font:italic 26px Georgia,serif' fill='#5d6470'>
+      somebody standing in the storm</text>
+    <text x='0' y='406' style='font:23px Georgia,serif' fill='#1a2431'>
+      Jupiter&#8217;s four moons, from a Jovian</text>
+    <text x='0' y='440' style='font:23px Georgia,serif' fill='#1a2431'>
+      horizon &#8212; risings, settings, eclipses.</text>
+    <text x='0' y='500' style='font:22px Georgia,serif' fill='#5d6470'>
+      A whole lunation every thirteen hours.</text>
+    <text x='0' y='578' style='font:21px Georgia,serif;letter-spacing:.09em'
+       fill='#8d6f28'>wichaa.net/redspot</text>
+  </g>
+</svg>"""
+
+
 def main():
     check = "--check" in sys.argv
-    src = module_source(dial.og_card_svg())
+    rs = redspot_source(redspot_card_svg())
+    pieces = ((TARGET, module_source(dial.og_card_svg())), (RS_TARGET, rs))
+
+    stale = []
+    for target, src in pieces:
+        if check:
+            if not target.exists() or target.read_text() != src:
+                stale.append(target.name)
+            continue
+        target.write_text(src)
+        print(f"wrote {target}  ({len(src)/1024:.0f} KB)")
     if check:
-        if not TARGET.exists() or TARGET.read_text() != src:
-            print(f"{TARGET} is out of date — run: python3 export_wichaa.py")
+        if stale:
+            print("out of date: " + ", ".join(stale) + " — run: python3 export_wichaa.py")
             sys.exit(1)
-        print(f"{TARGET.name} is up to date")
-        return
-    TARGET.write_text(src)
-    print(f"wrote {TARGET}  ({len(src)/1024:.0f} KB)")
+        print("both generated modules are up to date")
 
 
 if __name__ == "__main__":
