@@ -562,7 +562,7 @@ def body(gd, gear_rows, validation_rows, vjson) -> str:
 </header>
 
 <div class=instrument>
-  {dial.dial_svg()}
+  {dial.dial_svg(dial.baked())}
 
   <div class=ctrls>
     <button class=secondary id=backd>&#9664;&#9664; Day</button>

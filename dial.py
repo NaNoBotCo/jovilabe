@@ -42,6 +42,11 @@ R_ORBIT_MAX = 330.0    # Callisto's ring
 # true to this — the orbits, the globe, and the width of the shadow.
 SCALE = R_ORBIT_MAX / jove.R_MEAN[3]
 
+# The moment baked into the share card and into the un-scripted page. Chosen
+# because the four moons are well spread and one is in the shadow, so the card
+# shows the instrument doing the thing it is for.
+CARD_JD = 2461450.15
+
 INK = "#20180d"
 BRASS = "#96723a"
 BRASS_DK = "#6d5027"
@@ -392,7 +397,7 @@ def _orbit_rings() -> str:
     return "".join(out)
 
 
-def _shadow_cone() -> str:
+def _shadow_cone(state=None) -> str:
     """Jupiter's shadow, drawn as the narrowing cone it really is.
 
     The Sun is half a degree wide from here, so the umbra closes at about 0.0009
@@ -408,36 +413,61 @@ def _shadow_cone() -> str:
         p = [(x, -w) for x, w in pts] + [(x, w) for x, w in reversed(pts)]
         return (f"<path d='{_path([(CX + a, CY + b) for a, b in p], True)}' "
                 f"fill='{fill}' opacity='{op}'/>")
-    return ("<g id='shadow'>" + band(pen, SHADOW_FILL, .18) + band(umb, SHADOW_FILL, .5)
+    t = (f" transform='rotate({_f(state['shadow'])} {CX} {CY})'" if state else "")
+    return (f"<g id='shadow'{t}>" + band(pen, SHADOW_FILL, .18) + band(umb, SHADOW_FILL, .5)
             + "</g>")
 
 
-def _jupiter_plan() -> str:
+def _jupiter_plan(state=None) -> str:
     """Jupiter from above its own pole: half in sunlight, half not.
 
     Drawn at true size, which at this scale is a bead twelve units across. That is
     the honest proportion and the whole reason the shadow reaches so far.
     """
     r = SCALE
+    t = (f" transform='rotate({_f(state['lit'])} {CX} {CY})'" if state else "")
     return (f"<g id='jupplan'>"
             f"<circle cx='{CX}' cy='{CY}' r='{_f(r)}' fill='{SHADOW_FILL}'/>"
             f"<path d='M{_f(CX)} {_f(CY - r)}a{_f(r)} {_f(r)} 0 0 1 0 {_f(2 * r)}Z' "
-            f"fill='{JUP_BODY}' id='juplit'/>"
+            f"fill='{JUP_BODY}' id='juplit'{t}/>"
             f"<circle cx='{CX}' cy='{CY}' r='{_f(r)}' fill='none' stroke='{BRASS_DK}' "
             f"stroke-width='.8'/></g>")
 
 
-def _moon_beads() -> str:
+def baked(jd: float | None = None):
+    """A real configuration, frozen into the markup.
+
+    Two reasons, neither cosmetic. A reader with JavaScript off should see the
+    moons where they actually are rather than four beads stacked at the centre;
+    and the share card is rasterised without ever running the script, so the
+    picture on it has to be in the markup already.
+    """
+    if jd is None:
+        jd = CARD_JD
+    ph = jove.phenomena(jd)
+    return {
+        "beads": [(CX + SCALE * px, CY - SCALE * py) for px, py in ph["plan"]],
+        "shadow": -(ph["sun_az"] + 180.0),
+        "lit": -ph["sun_az"],
+        "ph": ph,
+    }
+
+
+def _moon_beads(state=None) -> str:
     out = []
     for i in range(4):
+        t = ""
+        if state:
+            x, y = state["beads"][i]
+            t = f" transform='translate({_f(x)} {_f(y)})'"
         out.append(
-            f"<g class='bead' id='bead{i}'>"
+            f"<g class='bead' id='bead{i}'{t}>"
             f"<circle r='9' fill='{MOON_INK[i]}' stroke='{INK}' stroke-width='1'/>"
             f"<text class='beadlab' y='-14'>{ROMAN[i]}</text></g>")
     return "".join(out)
 
 
-def dial_svg() -> str:
+def dial_svg(state=None) -> str:
     clip = ("<clipPath id='plateclip'><path fill-rule='evenodd' d='"
             + f"M{_f(CX - R_PLATE)} {_f(CY)}a{_f(R_PLATE)} {_f(R_PLATE)} 0 1 0 "
               f"{_f(2 * R_PLATE)} 0a{_f(R_PLATE)} {_f(R_PLATE)} 0 1 0 {_f(-2 * R_PLATE)} 0Z"
@@ -480,9 +510,9 @@ def dial_svg() -> str:
   <!-- 5. the orbits, true to scale -->
   {_orbit_rings()}
   <!-- 6. the shadow, then the globe, then the moons -->
-  {_shadow_cone()}
-  {_jupiter_plan()}
-  {_moon_beads()}
+  {_shadow_cone(state)}
+  {_jupiter_plan(state)}
+  {_moon_beads(state)}
   <!-- 7. the cartouche -->
   <text class='sig' x='{CX}' y='{_f(CY + 372)}'>IOVILABIVM &#183; MEDICEORVM SIDERVM</text>
 </svg>"""
@@ -653,4 +683,43 @@ def resonance_dial_svg() -> str:
      stroke='#b4573c' stroke-width='1.6'/></g>
   <circle cx='{_f(cx)}' cy='{_f(cy)}' r='7' fill='{BRASS_DK}'/>
   <text class='subread' id='resread' x='{_f(cx)}' y='{_f(cy + 82)}'>&#8212;</text>
+</svg>"""
+
+
+def og_card_svg() -> str:
+    """The 1200x630 share card — the dial itself, not a second drawing of it.
+
+    The instrument is lifted whole out of ``dial_svg`` and scaled, so the picture
+    that unfurls in a link preview is byte-for-byte the picture on the page. A card
+    redrawn by hand is a second implementation, and second implementations drift.
+    """
+    inner = dial_svg(baked())
+    inner = inner[inner.index(">", inner.index("<svg")) + 1:inner.rindex("</svg>")]
+    st = baked()
+    doing = [m for m in st["ph"]["moons"] if m["transit"] or m["eclipsed"]]
+    note = ("Io in transit, casting its shadow" if doing else
+            "the four Medicean stars in their orbits")
+    return f"""<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='630'
+     viewBox='0 0 1200 630'>
+  <rect width='1200' height='630' fill='{PLATE}'/>
+  <rect x='0' y='0' width='1200' height='14' fill='{BRASS_DK}'/>
+  <g transform='translate(24 40) scale(0.55)'>{inner}</g>
+  <g transform='translate(624 0)'>
+    <text x='0' y='176' style='font:700 66px Georgia,serif' fill='{INK}'>The Jovilabe</text>
+    <text x='0' y='222' style='font:18px Georgia,serif;letter-spacing:.14em'
+       fill='{BRASS_DK}'>IOVILABIVM &#183; MEDICEORVM SIDERVM</text>
+    <text x='0' y='296' style='font:28px Georgia,serif' fill='{INK}'>
+      Jupiter&#8217;s four great moons &#8212;</text>
+    <text x='0' y='336' style='font:28px Georgia,serif' fill='{INK}'>
+      where they stand tonight,</text>
+    <text x='0' y='376' style='font:28px Georgia,serif' fill='{INK}'>
+      and where their shadows fall.</text>
+    <text x='0' y='438' style='font:italic 23px Georgia,serif' fill='#5b5040'>{note}</text>
+    <text x='0' y='498' style='font:21px Georgia,serif' fill='#5b5040'>
+      Orbits to true scale &#183; the wheelwork</text>
+    <text x='0' y='530' style='font:21px Georgia,serif' fill='#5b5040'>
+      checked against JPL Horizons</text>
+    <text x='0' y='586' style='font:21px Georgia,serif;letter-spacing:.09em'
+       fill='{BRASS_DK}'>wichaa.net/jovilabe</text>
+  </g>
 </svg>"""
