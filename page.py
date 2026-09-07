@@ -753,7 +753,5 @@ rate, 9h 55m 40.6s, but <i>where the spot sits</i> in that system is not somethi
 any theory predicts &#8212; it wanders tens of degrees a year and has to be re-set from
 observation. So it is placed at a stated longitude and left to run, which is exactly
 what you would have to do with a real one.</p>
-<p>Nothing here is loaded from the network. No fonts, no images, no scripts from
-elsewhere. Open the file with the wifi off and the instrument works, which is the least
-an instrument should promise.</p>
+<p>Open the file with the wifi off and the instrument works.</p>
 """
