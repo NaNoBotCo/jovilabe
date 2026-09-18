@@ -104,3 +104,13 @@ the worst residual from 0.3 AU to 2×10⁻⁶ AU.
 
 Both were caught by measurement, not by reading the code. That is the whole argument
 for `validate.py` existing.
+
+
+## Licence
+
+Records, prose and pages: CC BY-SA 4.0. Code: AGPL-3.0-or-later. Anything
+carried in from elsewhere keeps its own terms — see [LICENSE](LICENSE).
+
+**Commercial licence.** If share-alike doesn't fit your use — a corpus, a
+product, a model — a commercial licence is available.
+[Open an issue](https://github.com/NaNoBotCo/jovilabe/issues) and say what you need.
